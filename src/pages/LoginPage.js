@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaLock, FaExchangeAlt, FaGoogle, FaFacebook, FaApple } from 'react-icons/fa';
 import Header from '../components/organisms/Header';
 import Footer from '../components/organisms/Footer';
@@ -9,8 +9,9 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
@@ -23,14 +24,35 @@ const LoginPage = () => {
     // Yükleme durumunu göster
     setIsLoading(true);
     
-    // Normal şartlarda burası Firebase'e bağlanacak
-    setTimeout(() => {
-      console.log('Giriş yapılıyor:', { email, password });
-      setIsLoading(false);
+    try {
+      console.log('Sending login request with:', { email, password });
       
-      // Firebase bağlantısı olmadığı için şimdilik sadece konsola yazdırıyoruz
-      alert('Giriş işlemi şimdilik simüle ediliyor. Gerçek bir bağlantı yok.');
-    }, 1500);
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await response.json();
+      console.log('Login response:', data);
+      
+      if (response.ok) {
+        // JWT token'ı kaydet
+        localStorage.setItem('token', data.token);
+        
+        // Profil sayfasına yönlendir
+        navigate('/profil');
+      } else {
+        setError(data.error || 'Giriş yapılırken bir hata oluştu.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Sunucu bağlantısında bir hata oluştu.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -140,39 +162,7 @@ const LoginPage = () => {
                 </button>
               </form>
               
-              <div className="mt-8">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-dark-500">veya şununla devam et</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    className="w-full flex justify-center py-2.5 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-dark-700 hover:bg-gray-50 font-medium"
-                  >
-                    <FaGoogle className="text-red-500" />
-                  </button>
-                  
-                  <button
-                    type="button"
-                    className="w-full flex justify-center py-2.5 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-dark-700 hover:bg-gray-50 font-medium"
-                  >
-                    <FaFacebook className="text-blue-600" />
-                  </button>
-                  
-                  <button
-                    type="button"
-                    className="w-full flex justify-center py-2.5 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-dark-700 hover:bg-gray-50 font-medium"
-                  >
-                    <FaApple className="text-black" />
-                  </button>
-                </div>
-              </div>
+             
               
               <div className="mt-8 text-center">
                 <p className="text-sm text-dark-500">
