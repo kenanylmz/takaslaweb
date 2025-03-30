@@ -69,7 +69,7 @@ const Profile = () => {
               <div className="md:w-1/3 bg-primary-500 text-white p-8">
                 <div className="flex items-center justify-center mb-6">
                   <div className="w-32 h-32 bg-white rounded-full overflow-hidden border-4 border-white">
-                    {user?.profileImage ? (
+                    {user?.profileImage && user.profileImage !== 'default-profile.jpg' ? (
                       <img 
                         src={`http://localhost:3001/uploads/${user.profileImage}`}
                         alt={user.name} 

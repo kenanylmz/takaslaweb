@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const fs = require('fs');
+const path = require('path');
 
 // @desc    Kullanıcı profilini getir
 // @route   GET /api/users/profile
@@ -56,6 +58,84 @@ exports.updateUserProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Sunucu hatası'
+    });
+  }
+};
+
+// @desc    Profil resmi yükle
+// @route   POST /api/users/profile/upload-image
+// @access  Private
+exports.uploadProfileImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Lütfen bir resim dosyası seçin'
+      });
+    }
+
+    // Önceki profil resmini kontrol et ve varsayılan resim değilse sil
+    const user = await User.findById(req.user.id);
+    if (user.profileImage && user.profileImage !== 'default-profile.jpg') {
+      const oldImagePath = path.join(__dirname, '../uploads', user.profileImage);
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
+    }
+
+    // Yeni profil resmini kaydet
+    await User.findByIdAndUpdate(req.user.id, {
+      profileImage: req.file.filename
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        filename: req.file.filename,
+        path: `/uploads/${req.file.filename}`
+      }
+    });
+  } catch (error) {
+    console.error('Profil resmi yükleme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Profil resmi yüklenirken bir hata oluştu'
+    });
+  }
+};
+
+// @desc    Şifre değiştir
+// @route   PUT /api/users/profile/change-password
+// @access  Private
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Kullanıcıyı şifresiyle birlikte bul
+    const user = await User.findById(req.user.id).select('+password');
+
+    // Mevcut şifreyi doğrula
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        error: 'Mevcut şifre yanlış'
+      });
+    }
+
+    // Yeni şifreyi ayarla
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Şifre başarıyla değiştirildi'
+    });
+  } catch (error) {
+    console.error('Şifre değiştirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Şifre değiştirilirken bir hata oluştu'
     });
   }
 }; 
