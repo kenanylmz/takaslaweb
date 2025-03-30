@@ -47,7 +47,7 @@ const Header = () => {
               Hakkımızda
             </Link>
             <Link to="/iletisim" className={`font-medium transition-colors hover:text-primary-500 ${location.pathname === '/iletisim' ? 'border-b-2 border-primary-500' : ''}`}>
-              İletişim
+              
             </Link>
           </nav>
 
@@ -102,7 +102,7 @@ const Header = () => {
                 className={`text-dark-700 hover:text-primary-500 transition py-2 ${location.pathname === '/iletisim' ? 'font-medium text-primary-500' : ''}`}
                 onClick={() => setIsMenuOpen(false)}
               >
-                İletişim
+            
               </Link>
 
               <div className="flex flex-col space-y-3 pt-4 border-t border-gray-100">
