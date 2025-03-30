@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaUser, FaCamera, FaMapMarkerAlt, FaPhone, FaLock, FaArrowLeft } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { 
+  FaUser, FaCamera, FaMapMarkerAlt, FaPhone, FaLock, 
+  FaArrowLeft, FaUpload, FaEdit, FaTrash, FaCheck, 
+  FaSave, FaExclamationCircle, FaInfoCircle 
+} from 'react-icons/fa';
 import Header from '../components/organisms/Header';
 import Footer from '../components/organisms/Footer';
 
@@ -21,8 +25,26 @@ const ProfileEditPage = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
+  // Tooltip timer
+  useEffect(() => {
+    let tooltipTimer;
+    if (showTooltip) {
+      tooltipTimer = setTimeout(() => {
+        setShowTooltip(false);
+      }, 3000);
+    }
+    return () => clearTimeout(tooltipTimer);
+  }, [showTooltip]);
+
+  // Profil bilgilerini yükle
   useEffect(() => {
     const fetchUserProfile = async () => {
       const token = localStorage.getItem('token');
@@ -50,6 +72,7 @@ const ProfileEditPage = () => {
         console.log('Profile data received:', data);
         const user = data.data;
         
+        // Form verilerini ayarla
         setFormData({
           name: user.name || '',
           phone: user.phone || '',
@@ -57,6 +80,7 @@ const ProfileEditPage = () => {
           district: user.location?.district || ''
         });
         
+        // Profil resmi varsa göster
         if (user.profileImage) {
           setPreviewUrl(`http://localhost:3001/uploads/${user.profileImage}`);
         }
@@ -86,12 +110,103 @@ const ProfileEditPage = () => {
     });
   };
 
+  const handleProfileImageClick = () => {
+    fileInputRef.current.click();
+  };
+
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      handleImageFile(file);
+    }
+  };
+
+  const handleImageFile = (file) => {
+    if (file.type.startsWith('image/')) {
       setProfileImage(file);
       setPreviewUrl(URL.createObjectURL(file));
+      // Profil resmini hemen yükle
+      uploadProfileImage(file);
+    } else {
+      setError('Lütfen geçerli bir resim dosyası seçin.');
+      setTimeout(() => setError(null), 3000);
     }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const uploadProfileImage = async (file) => {
+    const token = localStorage.getItem('token');
+    
+    if (!token || !file) return;
+    
+    setIsUploading(true);
+    setUploadProgress(0);
+    
+    const formData = new FormData();
+    formData.append('profileImage', file);
+    
+    try {
+      // Sahte ilerleme
+      const interval = setInterval(() => {
+        setUploadProgress(prev => {
+          const newProgress = prev + 5;
+          return newProgress < 90 ? newProgress : prev;
+        });
+      }, 100);
+      
+      const response = await fetch('http://localhost:3001/api/users/profile/upload-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      clearInterval(interval);
+      
+      if (response.ok) {
+        setUploadProgress(100);
+        const data = await response.json();
+        setSuccess('Profil resmi başarıyla güncellendi!');
+        setTimeout(() => {
+          setSuccess(null);
+          setUploadProgress(0);
+          setIsUploading(false);
+        }, 2000);
+      } else {
+        throw new Error('Profil resmi yüklenirken bir hata oluştu');
+      }
+    } catch (error) {
+      console.error('Profil resmi yükleme hatası:', error);
+      setError('Profil resmi yüklenirken bir hata oluştu.');
+      setUploadProgress(0);
+      setIsUploading(false);
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleClearImage = () => {
+    setProfileImage(null);
+    setPreviewUrl('');
+    // Varsayılan resmi kullanmak için API çağrısı yapılabilir
   };
 
   const handleProfileSubmit = async (e) => {
@@ -211,8 +326,9 @@ const ProfileEditPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="spinner-border text-primary" role="status">
-          <span className="sr-only">Yükleniyor...</span>
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-4 text-primary-600 font-medium">Profil yükleniyor...</p>
         </div>
       </div>
     );
@@ -224,215 +340,308 @@ const ProfileEditPage = () => {
       
       <div className="pt-24 pb-12 flex-1">
         <div className="container mx-auto px-4">
-          <button
-            onClick={() => navigate('/profil')}
-            className="flex items-center gap-2 text-primary-600 mb-6 font-medium"
-          >
-            <FaArrowLeft /> Profil'e Dön
-          </button>
-          
-          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-2xl font-bold text-dark-800">Profil Bilgilerini Düzenle</h2>
-              <p className="text-dark-500 mt-1">Kişisel bilgilerinizi güncelleyin</p>
+          {/* Üst Başlık Alanı */}
+          <div className="mb-8 flex items-center justify-between">
+            <div className="flex items-center">
+              <Link
+                to="/profil"
+                className="mr-4 p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 transition-colors"
+              >
+                <FaArrowLeft className="text-primary-500" />
+              </Link>
+              <h1 className="text-3xl font-bold text-dark-800">Profil Düzenle</h1>
             </div>
             
-            {error && (
-              <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 mb-4 mx-6">
-                {error}
-              </div>
-            )}
-            
             {success && (
-              <div className="p-4 bg-green-50 border-l-4 border-green-500 text-green-700 mb-4 mx-6">
+              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg flex items-center">
+                <FaCheck className="mr-2" />
                 {success}
               </div>
             )}
             
-            <form onSubmit={handleProfileSubmit} className="p-6">
-              <div className="flex flex-col md:flex-row gap-8">
-                {/* Profil Resmi */}
-                <div className="flex flex-col items-center space-y-4 md:w-1/3">
-                  <div className="relative w-48 h-48 bg-gray-100 rounded-full overflow-hidden border-4 border-primary-100">
+            {error && (
+              <div className="bg-red-100 text-red-700 px-4 py-2 rounded-lg flex items-center">
+                <FaExclamationCircle className="mr-2" />
+                {error}
+              </div>
+            )}
+          </div>
+          
+          {/* Ana İçerik */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Sol Panel - Profil Resmi */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                  <h2 className="text-2xl font-bold text-dark-800 flex items-center">
+                    <FaUser className="mr-2 text-primary-500" />
+                    Profil Resmi
+                  </h2>
+                  <p className="text-dark-500 mt-1">Profil resminizi buradan güncelleyebilirsiniz</p>
+                </div>
+                
+                <div className="p-6">
+                  <div 
+                    className={`relative w-full aspect-square rounded-xl overflow-hidden mb-4 
+                      ${isDragging ? 'border-2 border-dashed border-primary-500 bg-primary-50' : 'border border-gray-200'}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
                     {previewUrl ? (
                       <img 
                         src={previewUrl} 
-                        alt="Profil Önizleme" 
+                        alt="Profil Resmi" 
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-200 text-primary-500">
-                        <FaUser size={64} />
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100">
+                        <FaUser size={64} className="text-gray-400 mb-4" />
+                        <p className="text-dark-500 text-center px-4">
+                          Profil resmi yüklemek için tıklayın veya sürükleyip bırakın
+                        </p>
                       </div>
                     )}
                     
-                    <label 
-                      htmlFor="profileImage" 
-                      className="absolute bottom-0 right-0 bg-primary-500 text-white p-2 rounded-full cursor-pointer shadow-md hover:bg-primary-600 transition"
-                    >
-                      <FaCamera size={18} />
-                    </label>
-                    <input 
-                      type="file" 
-                      id="profileImage" 
-                      name="profileImage" 
-                      onChange={handleProfileImageChange}
-                      className="hidden" 
-                      accept="image/*"
-                    />
+                    {/* Yükleme İlerleme Çubuğu */}
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                        <div className="w-3/4 bg-gray-200 rounded-full h-2.5">
+                          <div 
+                            className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Kontrol Butonları */}
+                    <div className="absolute bottom-2 right-2 flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={handleProfileImageClick}
+                        className="p-2 bg-primary-500 text-white rounded-full hover:bg-primary-600 transition-colors"
+                        onMouseEnter={() => setShowTooltip(true)}
+                        onMouseLeave={() => setShowTooltip(false)}
+                      >
+                        <FaEdit size={16} />
+                        {showTooltip && (
+                          <div className="absolute bottom-full right-0 mb-2 w-32 bg-dark-800 text-white text-xs rounded p-1">
+                            Profil resmini değiştir
+                          </div>
+                        )}
+                      </button>
+                      
+                      {previewUrl && (
+                        <button
+                          type="button"
+                          onClick={handleClearImage}
+                          className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <FaTrash size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm text-dark-500">
-                    Profil resminizi değiştirmek için tıklayın
-                  </p>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleProfileImageChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  
+                  <button
+                    type="button"
+                    onClick={handleProfileImageClick}
+                    className="w-full py-3 px-4 mt-4 bg-primary-50 text-primary-700 rounded-lg border border-primary-200 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 font-medium transition-colors flex items-center justify-center"
+                  >
+                    <FaUpload className="mr-2" />
+                    Resim Yükle
+                  </button>
+                  
+                  <div className="mt-4 text-sm text-dark-500 bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-start mb-2">
+                      <FaInfoCircle className="text-primary-500 mr-2 mt-0.5" />
+                      <p>En iyi görünüm için kare formatta resim yükleyin.</p>
+                    </div>
+                    <p className="ml-6">Desteklenen formatlar: JPG, PNG, GIF, WEBP</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Sağ Panel - Profil Bilgileri ve Şifre */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Profil Bilgileri Formu */}
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                  <h2 className="text-2xl font-bold text-dark-800 flex items-center">
+                    <FaEdit className="mr-2 text-primary-500" />
+                    Profil Bilgileri
+                  </h2>
+                  <p className="text-dark-500 mt-1">Kişisel bilgilerinizi düzenleyin</p>
                 </div>
                 
-                {/* Form Alanları */}
-                <div className="md:w-2/3 space-y-6">
-                  <div>
-                    <label htmlFor="name" className="block text-dark-700 font-medium mb-2">
-                      Ad Soyad
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Ad Soyad"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="phone" className="block text-dark-700 font-medium mb-2">
-                      Telefon Numarası
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="5XX XXX XX XX"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={handleProfileSubmit} className="p-6">
+                  <div className="space-y-6">
                     <div>
-                      <label htmlFor="city" className="block text-dark-700 font-medium mb-2">
-                        Şehir
+                      <label htmlFor="name" className="block text-dark-700 font-medium mb-2 flex items-center">
+                        <FaUser className="mr-2 text-primary-500" />
+                        Ad Soyad
                       </label>
                       <input
                         type="text"
-                        id="city"
-                        name="city"
-                        value={formData.city}
+                        id="name"
+                        name="name"
+                        value={formData.name}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="Şehir"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                        placeholder="Adınız Soyadınız"
                       />
                     </div>
                     
                     <div>
-                      <label htmlFor="district" className="block text-dark-700 font-medium mb-2">
-                        İlçe
+                      <label htmlFor="phone" className="block text-dark-700 font-medium mb-2 flex items-center">
+                        <FaPhone className="mr-2 text-primary-500" />
+                        Telefon
                       </label>
                       <input
-                        type="text"
-                        id="district"
-                        name="district"
-                        value={formData.district}
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="İlçe"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                        placeholder="Telefon Numaranız"
                       />
                     </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="city" className="block text-dark-700 font-medium mb-2 flex items-center">
+                          <FaMapMarkerAlt className="mr-2 text-primary-500" />
+                          Şehir
+                        </label>
+                        <input
+                          type="text"
+                          id="city"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                          placeholder="Şehir"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="district" className="block text-dark-700 font-medium mb-2">
+                          İlçe
+                        </label>
+                        <input
+                          type="text"
+                          id="district"
+                          name="district"
+                          value={formData.district}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                          placeholder="İlçe"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        className="w-full py-3 px-4 bg-primary-500 text-white rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 font-medium transition-colors flex items-center justify-center"
+                      >
+                        <FaSave className="mr-2" />
+                        Bilgileri Güncelle
+                      </button>
+                    </div>
                   </div>
-                  
-                  <div className="pt-4">
-                    <button
-                      type="submit"
-                      className="w-full py-3 px-4 bg-primary-500 text-white rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 font-medium transition-colors"
-                    >
-                      Bilgileri Güncelle
-                    </button>
-                  </div>
-                </div>
+                </form>
               </div>
-            </form>
-          </div>
-          
-          {/* Şifre Değiştirme Formu */}
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-2xl font-bold text-dark-800">Şifre Değiştir</h2>
-              <p className="text-dark-500 mt-1">Hesap güvenliğiniz için düzenli olarak şifrenizi değiştirin</p>
+              
+              {/* Şifre Değiştirme Formu */}
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                  <h2 className="text-2xl font-bold text-dark-800 flex items-center">
+                    <FaLock className="mr-2 text-primary-500" />
+                    Şifre Değiştir
+                  </h2>
+                  <p className="text-dark-500 mt-1">Hesap güvenliğiniz için düzenli olarak şifrenizi değiştirin</p>
+                </div>
+                
+                <form onSubmit={handlePasswordSubmit} className="p-6">
+                  <div className="space-y-6">
+                    <div>
+                      <label htmlFor="currentPassword" className="block text-dark-700 font-medium mb-2 flex items-center">
+                        <FaLock className="mr-2 text-primary-500" />
+                        Mevcut Şifre
+                      </label>
+                      <input
+                        type="password"
+                        id="currentPassword"
+                        name="currentPassword"
+                        value={passwordData.currentPassword}
+                        onChange={handlePasswordChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                        placeholder="Mevcut şifreniz"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="newPassword" className="block text-dark-700 font-medium mb-2 flex items-center">
+                        <FaLock className="mr-2 text-primary-500" />
+                        Yeni Şifre
+                      </label>
+                      <input
+                        type="password"
+                        id="newPassword"
+                        name="newPassword"
+                        value={passwordData.newPassword}
+                        onChange={handlePasswordChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                        placeholder="Yeni şifreniz (en az 6 karakter)"
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="confirmPassword" className="block text-dark-700 font-medium mb-2 flex items-center">
+                        <FaLock className="mr-2 text-primary-500" />
+                        Yeni Şifre (Tekrar)
+                      </label>
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={passwordData.confirmPassword}
+                        onChange={handlePasswordChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                        placeholder="Yeni şifrenizi tekrar girin"
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        className="w-full py-3 px-4 bg-primary-500 text-white rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 font-medium transition-colors flex items-center justify-center"
+                      >
+                        <FaLock className="mr-2" />
+                        Şifreyi Değiştir
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
             </div>
-            
-            <form onSubmit={handlePasswordSubmit} className="p-6">
-              <div className="space-y-6">
-                <div>
-                  <label htmlFor="currentPassword" className="block text-dark-700 font-medium mb-2">
-                    Mevcut Şifre
-                  </label>
-                  <input
-                    type="password"
-                    id="currentPassword"
-                    name="currentPassword"
-                    value={passwordData.currentPassword}
-                    onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Mevcut şifreniz"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="newPassword" className="block text-dark-700 font-medium mb-2">
-                    Yeni Şifre
-                  </label>
-                  <input
-                    type="password"
-                    id="newPassword"
-                    name="newPassword"
-                    value={passwordData.newPassword}
-                    onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Yeni şifreniz (en az 6 karakter)"
-                    minLength={6}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="confirmPassword" className="block text-dark-700 font-medium mb-2">
-                    Yeni Şifre (Tekrar)
-                  </label>
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={passwordData.confirmPassword}
-                    onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Yeni şifrenizi tekrar girin"
-                    minLength={6}
-                    required
-                  />
-                </div>
-                
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    className="w-full py-3 px-4 bg-primary-500 text-white rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 font-medium transition-colors"
-                  >
-                    Şifreyi Değiştir
-                  </button>
-                </div>
-              </div>
-            </form>
           </div>
         </div>
       </div>
