@@ -1,132 +1,227 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { FaBars, FaTimes, FaExchangeAlt, FaSearch, FaBell, FaUser } from 'react-icons/fa';
+import React, { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  FaUser,
+  FaHome,
+  FaExchangeAlt,
+  FaListAlt,
+  FaPlus,
+  FaBell,
+} from "react-icons/fa";
 
 const Header = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
-  
-  // Sayfa kaydırıldığında header arkaplan rengini değiştir
+  const [notifications, setNotifications] = useState(0);
+
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    // Token kontrolü ile giriş durumunu belirle
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, [location]);
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    window.location.href = "/giris";
+  };
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'}`}>
-      <div className="container mx-auto px-6">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 text-xl font-bold">
-            <div className="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center text-white">
-              <FaExchangeAlt />
-            </div>
-            <span className={`font-serif ${isScrolled || location.pathname !== '/' ? 'text-dark-800' : 'text-white'}`}>
-              TakasApp
+    <header className="fixed w-full z-50 shadow-md bg-white">
+      <div className="container mx-auto px-4">
+        <div className="flex justify-between items-center py-4">
+          <Link
+            to="/"
+            className="text-2xl font-bold text-primary-600 flex items-center"
+          >
+            <FaExchangeAlt className="mr-2 transform -rotate-12" />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400">
+              Takasla
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className={`hidden md:flex items-center space-x-8 ${isScrolled || location.pathname !== '/' ? 'text-dark-600' : 'text-white'}`}>
-            <Link to="/" className={`font-medium transition-colors hover:text-primary-500 ${location.pathname === '/' ? 'border-b-2 border-primary-500' : ''}`}>
-              Ana Sayfa
-            </Link>
-            <Link to="/nasil-calisir" className={`font-medium transition-colors hover:text-primary-500 ${location.pathname === '/nasil-calisir' ? 'border-b-2 border-primary-500' : ''}`}>
-              Nasıl Çalışır?
-            </Link>
-            <Link to="/hakkimizda" className={`font-medium transition-colors hover:text-primary-500 ${location.pathname === '/hakkimizda' ? 'border-b-2 border-primary-500' : ''}`}>
-              Hakkımızda
-            </Link>
-            <Link to="/iletisim" className={`font-medium transition-colors hover:text-primary-500 ${location.pathname === '/iletisim' ? 'border-b-2 border-primary-500' : ''}`}>
-              
-            </Link>
-          </nav>
-
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link to="/giris" className={`px-5 py-2.5 font-medium rounded-lg transition-colors ${isScrolled || location.pathname !== '/' ? 'text-primary-600 hover:bg-primary-50' : 'text-white hover:bg-white hover:bg-opacity-10'}`}>
-              Giriş Yap
-            </Link>
-            <Link to="/kayit" className="px-5 py-2.5 bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-600 transition-colors shadow-md hover:shadow-lg">
-              Üye Ol
-            </Link>
+          {/* Mobil menü butonu */}
+          <div className="md:hidden">
+            <button
+              onClick={toggleMenu}
+              className="p-2 rounded-md text-gray-600 hover:text-primary-500 focus:outline-none"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                {isMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button 
-            className={`md:hidden focus:outline-none ${isScrolled || location.pathname !== '/' ? 'text-dark-800' : 'text-white'}`}
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
-          </button>
-        </div>
-      </div>
+          {/* Masaüstü menü */}
+          <nav className="hidden md:flex items-center space-x-1">
+            {isLoggedIn ? (
+              // Giriş yapılmış menü - Yeni Tasarım
+              <div className="flex items-center space-x-1">
+                <Link
+                  to="/"
+                  className="px-3 py-2 rounded-md text-gray-600 hover:text-primary-500 hover:bg-gray-50 transition-all flex items-center"
+                >
+                  <FaHome className="mr-1.5" />
+                  <span>Ana Sayfa</span>
+                </Link>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t absolute top-full left-0 right-0 shadow-lg">
-          <div className="container mx-auto px-6 py-4">
-            <nav className="flex flex-col space-y-4">
-              <Link 
-                to="/" 
-                className={`text-dark-700 hover:text-primary-500 transition py-2 ${location.pathname === '/' ? 'font-medium text-primary-500' : ''}`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Ana Sayfa
-              </Link>
-              <Link 
-                to="/nasil-calisir" 
-                className={`text-dark-700 hover:text-primary-500 transition py-2 ${location.pathname === '/nasil-calisir' ? 'font-medium text-primary-500' : ''}`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Nasıl Çalışır?
-              </Link>
-              <Link 
-                to="/hakkimizda" 
-                className={`text-dark-700 hover:text-primary-500 transition py-2 ${location.pathname === '/hakkimizda' ? 'font-medium text-primary-500' : ''}`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Hakkımızda
-              </Link>
-              <Link 
-                to="/iletisim" 
-                className={`text-dark-700 hover:text-primary-500 transition py-2 ${location.pathname === '/iletisim' ? 'font-medium text-primary-500' : ''}`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-            
-              </Link>
+                <Link
+                  to="/ilanlarim"
+                  className="px-3 py-2 rounded-md text-gray-600 hover:text-primary-500 hover:bg-gray-50 transition-all flex items-center"
+                >
+                  <FaListAlt className="mr-1.5" />
+                  <span>İlanlarım</span>
+                </Link>
 
-              <div className="flex flex-col space-y-3 pt-4 border-t border-gray-100">
-                <Link 
-                  to="/giris" 
-                  className="w-full px-4 py-3 text-center text-primary-600 border border-primary-500 font-medium rounded-lg hover:bg-primary-50 transition"
-                  onClick={() => setIsMenuOpen(false)}
+                <Link
+                  to="/ilan-ekle"
+                  className="px-3 py-2 rounded-md text-gray-600 hover:text-primary-500 hover:bg-gray-50 transition-all flex items-center"
+                >
+                  <FaPlus className="mr-1.5" />
+                  <span>İlan Ekle</span>
+                </Link>
+
+                <div className="pl-3 border-l border-gray-200 ml-1">
+                  <Link
+                    to="/profil"
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 hover:bg-primary-50 text-gray-700 hover:text-primary-600 transition-all"
+                  >
+                    <FaUser className="h-5 w-5" />
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              // Giriş yapılmamış menü
+              <>
+                <Link
+                  to="/"
+                  className="px-3 py-2 rounded-md text-gray-600 hover:text-primary-500 hover:bg-gray-50 transition-all"
+                >
+                  Ana Sayfa
+                </Link>
+                <Link
+                  to="/nasil-calisir"
+                  className="px-3 py-2 rounded-md text-gray-600 hover:text-primary-500 hover:bg-gray-50 transition-all"
+                >
+                  Nasıl Çalışır?
+                </Link>
+                <Link
+                  to="/hakkimizda"
+                  className="px-3 py-2 rounded-md text-gray-600 hover:text-primary-500 hover:bg-gray-50 transition-all"
+                >
+                  Hakkımızda
+                </Link>
+                <Link
+                  to="/giris"
+                  className="px-3 py-2 rounded-md text-primary-500 hover:text-primary-600 hover:bg-primary-50 transition-all font-medium"
                 >
                   Giriş Yap
                 </Link>
-                <Link 
-                  to="/kayit" 
-                  className="w-full px-4 py-3 text-center bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-600 transition shadow-md"
-                  onClick={() => setIsMenuOpen(false)}
+                <Link
+                  to="/kayit"
+                  className="px-3 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-all shadow-sm"
                 >
                   Üye Ol
                 </Link>
-              </div>
-            </nav>
+              </>
+            )}
+          </nav>
+        </div>
+
+        {/* Mobil menü (açılır kapanır) */}
+        <div className={`md:hidden ${isMenuOpen ? "block" : "hidden"}`}>
+          <div className="px-2 pt-2 pb-4 space-y-1 border-t border-gray-200">
+            {isLoggedIn ? (
+              // Giriş yapılmış mobil menü
+              <>
+                <Link
+                  to="/"
+                  className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md flex items-center"
+                >
+                  <FaHome className="mr-2" /> Ana Sayfa
+                </Link>
+                <Link
+                  to="/ilanlarim"
+                  className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md flex items-center"
+                >
+                  <FaListAlt className="mr-2" /> İlanlarım
+                </Link>
+                <Link
+                  to="/ilan-ekle"
+                  className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md flex items-center"
+                >
+                  <FaPlus className="mr-2" /> İlan Ekle
+                </Link>
+                <Link
+                  to="/profil"
+                  className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md flex items-center"
+                >
+                  <FaUser className="mr-2" /> Profilim
+                </Link>
+              </>
+            ) : (
+              // Giriş yapılmamış mobil menü
+              <>
+                <Link
+                  to="/"
+                  className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md"
+                >
+                  Ana Sayfa
+                </Link>
+                <Link
+                  to="/nasil-calisir"
+                  className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md"
+                >
+                  Nasıl Çalışır?
+                </Link>
+                <Link
+                  to="/hakkimizda"
+                  className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md"
+                >
+                  Hakkımızda
+                </Link>
+                <Link
+                  to="/giris"
+                  className="block px-3 py-2 text-primary-500 hover:text-primary-600 hover:bg-gray-50 rounded-md font-medium"
+                >
+                  Giriş Yap
+                </Link>
+                <Link
+                  to="/kayit"
+                  className="block px-3 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600"
+                >
+                  Üye Ol
+                </Link>
+              </>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </header>
   );
 };
 
-export default Header; 
+export default Header;

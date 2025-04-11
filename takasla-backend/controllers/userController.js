@@ -1,6 +1,7 @@
-const User = require('../models/User');
-const fs = require('fs');
-const path = require('path');
+const User = require("../models/User");
+const fs = require("fs");
+const path = require("path");
+const Listing = require("../models/Listing");
 
 // @desc    Kullanıcı profilini getir
 // @route   GET /api/users/profile
@@ -12,19 +13,19 @@ exports.getUserProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: 'Kullanıcı bulunamadı'
+        error: "Kullanıcı bulunamadı",
       });
     }
 
     res.status(200).json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      error: 'Sunucu hatası'
+      error: "Sunucu hatası",
     });
   }
 };
@@ -39,25 +40,24 @@ exports.updateUserProfile = async (req, res) => {
     const updateData = {
       name: name || req.user.name,
       phone: phone || req.user.phone,
-      location: location || req.user.location
+      location: location || req.user.location,
     };
 
     // Kullanıcı profilini güncelle
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const updatedUser = await User.findByIdAndUpdate(req.user.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     res.status(200).json({
       success: true,
-      data: updatedUser
+      data: updatedUser,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      error: 'Sunucu hatası'
+      error: "Sunucu hatası",
     });
   }
 };
@@ -70,14 +70,18 @@ exports.uploadProfileImage = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: 'Lütfen bir resim dosyası seçin'
+        error: "Lütfen bir resim dosyası seçin",
       });
     }
 
     // Önceki profil resmini kontrol et ve varsayılan resim değilse sil
     const user = await User.findById(req.user.id);
-    if (user.profileImage && user.profileImage !== 'default-profile.jpg') {
-      const oldImagePath = path.join(__dirname, '../uploads', user.profileImage);
+    if (user.profileImage && user.profileImage !== "default-profile.jpg") {
+      const oldImagePath = path.join(
+        __dirname,
+        "../uploads",
+        user.profileImage
+      );
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
       }
@@ -85,21 +89,21 @@ exports.uploadProfileImage = async (req, res) => {
 
     // Yeni profil resmini kaydet
     await User.findByIdAndUpdate(req.user.id, {
-      profileImage: req.file.filename
+      profileImage: req.file.filename,
     });
 
     res.status(200).json({
       success: true,
       data: {
         filename: req.file.filename,
-        path: `/uploads/${req.file.filename}`
-      }
+        path: `/uploads/${req.file.filename}`,
+      },
     });
   } catch (error) {
-    console.error('Profil resmi yükleme hatası:', error);
+    console.error("Profil resmi yükleme hatası:", error);
     res.status(500).json({
       success: false,
-      error: 'Profil resmi yüklenirken bir hata oluştu'
+      error: "Profil resmi yüklenirken bir hata oluştu",
     });
   }
 };
@@ -112,14 +116,14 @@ exports.changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     // Kullanıcıyı şifresiyle birlikte bul
-    const user = await User.findById(req.user.id).select('+password');
+    const user = await User.findById(req.user.id).select("+password");
 
     // Mevcut şifreyi doğrula
     const isMatch = await user.matchPassword(currentPassword);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        error: 'Mevcut şifre yanlış'
+        error: "Mevcut şifre yanlış",
       });
     }
 
@@ -129,13 +133,36 @@ exports.changePassword = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Şifre başarıyla değiştirildi'
+      message: "Şifre başarıyla değiştirildi",
     });
   } catch (error) {
-    console.error('Şifre değiştirme hatası:', error);
+    console.error("Şifre değiştirme hatası:", error);
     res.status(500).json({
       success: false,
-      error: 'Şifre değiştirilirken bir hata oluştu'
+      error: "Şifre değiştirilirken bir hata oluştu",
     });
   }
-}; 
+};
+
+// @desc    Kullanıcı istatistiklerini getir
+// @route   GET /api/users/stats
+// @access  Private
+exports.getUserStats = async (req, res) => {
+  try {
+    // Kullanıcıya ait ilan sayısını bul
+    const listingsCount = await Listing.countDocuments({ user: req.user.id });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        listingsCount,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      error: "Sunucu hatası",
+    });
+  }
+};
