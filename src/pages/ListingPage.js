@@ -12,6 +12,10 @@ import {
   FaAlignLeft,
   FaMapMarkerAlt,
   FaToolbox,
+  FaRobot,
+  FaLightbulb,
+  FaSpinner,
+  FaExchangeAlt,
 } from "react-icons/fa";
 import Header from "../components/organisms/Header";
 import Footer from "../components/organisms/Footer";
@@ -126,6 +130,10 @@ const ListingPage = () => {
   const [success, setSuccess] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState("");
   const navigate = useNavigate();
 
   const categories = [
@@ -348,6 +356,60 @@ const ListingPage = () => {
     }
   };
 
+  // Yapay zeka takas önerilerini al
+  const getAiSwapSuggestions = async () => {
+    try {
+      setLoadingSuggestions(true);
+      setSuggestionsError("");
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setSuggestionsError("Oturum sonlanmış");
+        return;
+      }
+
+      if (!formData.title || !formData.category || !formData.description) {
+        setSuggestionsError(
+          "Takas önerileri için önce ürün adı, kategori ve açıklama alanlarını doldurmalısınız."
+        );
+        setLoadingSuggestions(false);
+        return;
+      }
+
+      const response = await fetch(
+        "http://localhost:3001/api/ai/swap-suggestions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            category: formData.category,
+            description: formData.description,
+            condition: formData.condition,
+            city: formData.city,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAiSuggestions(data.data);
+        setShowAiSuggestions(true);
+      } else {
+        setSuggestionsError(data.error || "Öneriler alınırken bir hata oluştu");
+      }
+    } catch (error) {
+      console.error("Takas önerileri alma hatası:", error);
+      setSuggestionsError("Sunucu bağlantısında bir hata oluştu");
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
   const renderStepContent = () => {
     switch (activeStep) {
       case 1:
@@ -521,9 +583,33 @@ const ListingPage = () => {
       case 3:
         return (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ürün Fotoğrafları
-            </label>
+            <div className="flex justify-between items-center mb-4">
+              <label className="block text-sm font-medium text-gray-700">
+                Ürün Fotoğrafları
+              </label>
+
+              <button
+                type="button"
+                onClick={getAiSwapSuggestions}
+                className="flex items-center text-sm text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-md transition-colors"
+                disabled={loadingSuggestions}
+              >
+                {loadingSuggestions ? (
+                  <FaSpinner className="animate-spin mr-2" />
+                ) : (
+                  <FaRobot className="mr-2" />
+                )}
+                {loadingSuggestions
+                  ? "Öneriler Alınıyor..."
+                  : "Yapay Zeka İle Takas Önerisi Al"}
+              </button>
+            </div>
+
+            {suggestionsError && (
+              <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm">
+                <p>{suggestionsError}</p>
+              </div>
+            )}
 
             <div
               onClick={handleImageClick}
@@ -772,6 +858,83 @@ const ListingPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Yapay Zeka Önerileri Modal */}
+      {showAiSuggestions && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity"
+              aria-hidden="true"
+            >
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+
+            <span
+              className="hidden sm:inline-block sm:align-middle sm:h-screen"
+              aria-hidden="true"
+            >
+              &#8203;
+            </span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-500 p-6 text-white">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <FaLightbulb className="text-yellow-300 mr-3 text-2xl" />
+                    <h3 className="text-xl font-bold">Takas Önerileri</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowAiSuggestions(false)}
+                    className="text-white hover:text-gray-200"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+                <p className="mt-2 text-blue-100">
+                  Yapay zeka, ürününüz için aşağıdaki takas önerilerini
+                  oluşturdu.
+                </p>
+              </div>
+
+              <div className="bg-white px-6 py-4">
+                <div className="space-y-4">
+                  {aiSuggestions.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      className="p-4 border border-gray-100 rounded-lg hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 bg-blue-100 rounded-full p-2 mr-3">
+                          <FaExchangeAlt className="text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-medium text-gray-800">
+                            {suggestion.title}
+                          </h4>
+                          <p className="text-gray-600 mt-1">
+                            {suggestion.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-gray-50 px-6 py-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAiSuggestions(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

@@ -33,6 +33,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/items", require("./routes/itemRoutes"));
 app.use("/api/swaps", require("./routes/swapRoutes"));
 app.use("/api/listings", require("./routes/listingRoutes"));
+app.use("/api/ai", require("./routes/aiRoutes"));
 
 // Ana rota
 app.get("/", (req, res) => {
