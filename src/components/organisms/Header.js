@@ -7,6 +7,7 @@ import {
   FaListAlt,
   FaPlus,
   FaBell,
+  FaSearch,
 } from "react-icons/fa";
 
 const Header = () => {
@@ -89,6 +90,14 @@ const Header = () => {
                 </Link>
 
                 <Link
+                  to="/kesfet"
+                  className="px-3 py-2 rounded-md text-gray-600 hover:text-primary-500 hover:bg-gray-50 transition-all flex items-center"
+                >
+                  <FaSearch className="mr-1.5" />
+                  <span>Keşfet</span>
+                </Link>
+
+                <Link
                   to="/ilanlarim"
                   className="px-3 py-2 rounded-md text-gray-600 hover:text-primary-500 hover:bg-gray-50 transition-all flex items-center"
                 >
@@ -162,6 +171,12 @@ const Header = () => {
                   className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md flex items-center"
                 >
                   <FaHome className="mr-2" /> Ana Sayfa
+                </Link>
+                <Link
+                  to="/kesfet"
+                  className="block px-3 py-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-md flex items-center"
+                >
+                  <FaSearch className="mr-2" /> Keşfet
                 </Link>
                 <Link
                   to="/ilanlarim"

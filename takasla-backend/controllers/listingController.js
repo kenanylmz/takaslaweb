@@ -1,6 +1,8 @@
 const Listing = require("../models/Listing");
 const fs = require("fs");
 const path = require("path");
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 
 // @desc    Yeni ilan oluştur
 // @route   POST /api/listings
@@ -228,6 +230,153 @@ exports.updateListing = async (req, res) => {
     res.status(500).json({
       success: false,
       error: "İlan güncellenirken bir hata oluştu",
+    });
+  }
+};
+
+// @desc    Tüm ilanları getir (keşfet sayfası için)
+// @route   GET /api/listings
+// @access  Public
+exports.getAllListings = async (req, res) => {
+  try {
+    const {
+      category,
+      search,
+      city,
+      condition,
+      sort = "-createdAt",
+      page = 1,
+      limit = 10,
+      excludeUserId,
+    } = req.query;
+
+    console.log("Query Parameters:", req.query);
+
+    // Filtreleme için sorgu objesi oluştur
+    const query = { status: "active" };
+
+    // Kategori filtresi
+    if (category && category !== "Tümü") {
+      query.category = category;
+    }
+
+    // Şehir filtresi
+    if (city) {
+      query.city = city;
+    }
+
+    // Durum (condition) filtresi
+    if (condition) {
+      query.condition = condition;
+    }
+
+    // Arama filtresi (başlık veya açıklamada)
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Kullanıcı kendi ilanlarını görmek istemiyorsa
+    if (excludeUserId) {
+      console.log("Excluding listings from user:", excludeUserId);
+      // String ID'yi ObjectId tipine dönüştür
+      try {
+        const objectId = new ObjectId(excludeUserId);
+        query.user = { $ne: objectId };
+        console.log("Converted to ObjectId:", objectId);
+      } catch (err) {
+        console.error("ObjectId dönüştürme hatası:", err);
+        // Dönüştürme başarısız olsa da string olarak karşılaştır
+        query.user = { $ne: excludeUserId };
+      }
+    }
+
+    console.log("Final MongoDB Query:", JSON.stringify(query));
+
+    // Toplam ilan sayısını bul
+    const total = await Listing.countDocuments(query);
+
+    // Sayfalama ayarları
+    const skip = (page - 1) * limit;
+    const totalPages = Math.ceil(total / limit);
+
+    // İlanları getir
+    const listings = await Listing.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate("user", "name profileImage location");
+
+    console.log(
+      `Found ${listings.length} listings (excluding user ${excludeUserId})`
+    );
+
+    // Çift kontrol - kullanıcı ID'sini bir daha filtrele
+    if (excludeUserId) {
+      const userIdStr = String(excludeUserId);
+      const filteredListings = listings.filter(
+        (listing) => String(listing.user._id) !== userIdStr
+      );
+
+      console.log(
+        `After double filtering: ${filteredListings.length} listings`
+      );
+
+      return res.status(200).json({
+        success: true,
+        count: filteredListings.length,
+        total: filteredListings.length,
+        totalPages: Math.ceil(filteredListings.length / limit),
+        currentPage: page,
+        data: filteredListings,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: listings.length,
+      total,
+      totalPages,
+      currentPage: page,
+      data: listings,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Sunucu hatası",
+    });
+  }
+};
+
+// @desc    Tekil ilanı herkese açık olarak getir
+// @route   GET /api/listings/public/:id
+// @access  Public
+exports.getPublicListing = async (req, res) => {
+  try {
+    const listing = await Listing.findById(req.params.id).populate({
+      path: "user",
+      select: "name profileImage location",
+    });
+
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        error: "İlan bulunamadı",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: listing,
+    });
+  } catch (error) {
+    console.error("İlan getirme hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: "İlan yüklenirken bir hata oluştu",
     });
   }
 };

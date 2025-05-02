@@ -6,10 +6,17 @@ const {
   deleteListing,
   getListing,
   updateListing,
+  getAllListings,
+  getPublicListing,
 } = require("../controllers/listingController");
 const { protect } = require("../middleware/auth");
 const { upload } = require("../middleware/uploadMiddleware");
 
+// Public routes
+router.get("/", getAllListings);
+router.get("/public/:id", getPublicListing);
+
+// Protected routes
 router.post("/", protect, upload.array("images", 5), createListing);
 router.get("/me", protect, getUserListings);
 router.delete("/:id", protect, deleteListing);

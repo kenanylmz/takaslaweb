@@ -10,6 +10,8 @@ import MyListingsPage from "./pages/MyListingsPage";
 import EditListingPage from "./pages/EditListingPage";
 import HowItWorksPage from "./pages/HowItWorksPage";
 import AboutUsPage from "./pages/AboutUsPage";
+import ExplorePage from "./pages/ExplorePage";
+import ListingDetailPage from "./pages/ListingDetailPage";
 import "./App.css";
 
 function App() {
@@ -26,6 +28,8 @@ function App() {
         <Route path="/ilan-duzenle/:id" element={<EditListingPage />} />
         <Route path="/nasil-calisir" element={<HowItWorksPage />} />
         <Route path="/hakkimizda" element={<AboutUsPage />} />
+        <Route path="/kesfet" element={<ExplorePage />} />
+        <Route path="/listings/:id" element={<ListingDetailPage />} />
       </Routes>
     </Router>
   );
